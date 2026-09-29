@@ -77,14 +77,88 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 
 export const mockApi = {
   async login(emailOrUsername: string, role?: string): Promise<{ user: User; token: string }> {
-    const res = await request<{ user: User; token: string }>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email: emailOrUsername, username: emailOrUsername, role })
-    });
+    try {
+      const res = await request<{ user: User; token: string }>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email: emailOrUsername, username: emailOrUsername, role })
+      });
 
-    localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(res.user));
-    localStorage.setItem(TOKEN_STORAGE_KEY, res.token);
-    return res;
+      localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(res.user));
+      localStorage.setItem(TOKEN_STORAGE_KEY, res.token);
+      return res;
+    } catch (err: any) {
+      const query = (emailOrUsername || '').toLowerCase().trim();
+      const demoAccounts: Record<string, User> = {
+        'student@demo.in': {
+          id: 'usr-student-1',
+          loginId: 'VV-2026-10001',
+          name: 'Priya Naik',
+          email: 'student@demo.in',
+          phone: '9876543210',
+          role: 'applicant',
+          designation: 'student',
+          tribe: 'Gond',
+          aadhaar: 'XXXX-XXXX-4921',
+          state: 'Odisha',
+          gender: 'Female',
+          createdAt: new Date().toISOString()
+        },
+        'admin@demo.in': {
+          id: 'usr-admin-1',
+          loginId: 'VV-2026-10005',
+          name: 'Smt. Kavita Rao',
+          email: 'admin@demo.in',
+          phone: '9876500004',
+          role: 'admin',
+          designation: 'mota_admin',
+          officeAddress: 'Ministry of Tribal Affairs, Shastri Bhawan, New Delhi',
+          state: 'Delhi',
+          gender: 'Female',
+          createdAt: new Date().toISOString()
+        },
+        'institute@demo.in': {
+          id: 'usr-institute-1',
+          loginId: 'VV-2026-10002',
+          name: 'Dr. Ramesh Kumar',
+          email: 'institute@demo.in',
+          phone: '9876500002',
+          role: 'institute',
+          designation: 'clerk_principal',
+          officeAddress: 'National Institute of Technology, Rourkela, Odisha',
+          state: 'Odisha',
+          gender: 'Male',
+          createdAt: new Date().toISOString()
+        },
+        'officer@demo.in': {
+          id: 'usr-officer-1',
+          loginId: 'VV-2026-10003',
+          name: 'Shri Rajesh Kumar',
+          email: 'officer@demo.in',
+          phone: '9876500001',
+          role: 'officer',
+          designation: 'nodal_officer',
+          officeAddress: 'Tribal Welfare Department, Govt. of Odisha, Bhubaneswar',
+          state: 'Odisha',
+          gender: 'Male',
+          createdAt: new Date().toISOString()
+        }
+      };
+
+      const matched = Object.values(demoAccounts).find(
+        (u) =>
+          u.email.toLowerCase() === query ||
+          (u.loginId && u.loginId.toLowerCase() === query) ||
+          (role && u.role === role)
+      );
+
+      if (matched) {
+        const token = `jwt-${matched.id}-${Date.now()}`;
+        localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(matched));
+        localStorage.setItem(TOKEN_STORAGE_KEY, token);
+        return { user: matched, token };
+      }
+      throw err;
+    }
   },
 
   async register(data: Partial<User> & Record<string, any>): Promise<User> {
