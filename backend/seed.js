@@ -53,7 +53,7 @@ async function seed() {
         phone: '9876500002',
         role: 'institute',
         designation: 'clerk_principal',
-        officeAddress: 'National Institute of Technology, Rourkela, Odisha',
+        officeAddress: '',
         state: 'Odisha',
         password: 'demo123',
         createdAt: new Date().toISOString()

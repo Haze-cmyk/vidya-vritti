@@ -124,7 +124,7 @@ export const mockApi = {
           phone: '9876500002',
           role: 'institute',
           designation: 'clerk_principal',
-          officeAddress: 'National Institute of Technology, Rourkela, Odisha',
+          officeAddress: '',
           state: 'Odisha',
           gender: 'Male',
           createdAt: new Date().toISOString()

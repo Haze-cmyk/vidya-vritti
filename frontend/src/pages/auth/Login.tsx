@@ -62,8 +62,8 @@ const QUICK_LOGIN_ACCOUNTS: QuickLoginAccount[] = [
     label: 'Institute',
     name: 'Dr. Ramesh Kumar',
     email: 'institute@demo.in',
-    badge: 'NIT Rourkela',
-    badgeColor: 'bg-purple-100 text-purple-800 border-purple-300',
+    badge: '',
+    badgeColor: '',
     borderHover: 'hover:border-purple-500 hover:shadow-md',
     bgHover: 'hover:bg-purple-50/50',
     icon: Building2,
@@ -216,9 +216,13 @@ export const LoginPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="shrink-0 ml-1.5 flex flex-col items-end justify-between self-stretch">
-                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-xs border ${acc.badgeColor}`}>
-                      {acc.badge}
-                    </span>
+                    {acc.badge ? (
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-xs border ${acc.badgeColor}`}>
+                        {acc.badge}
+                      </span>
+                    ) : (
+                      <div></div>
+                    )}
                     {isCurrentLoading ? (
                       <div className="w-3.5 h-3.5 border-2 border-[#71816d]/30 border-t-[#71816d] rounded-full animate-spin mt-2"></div>
                     ) : (
