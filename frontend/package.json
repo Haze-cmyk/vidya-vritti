@@ -6,7 +6,7 @@
   "description": "Vite + React frontend for Vidya-Vrtti Unified Scholarship & Admin Portal",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node -e \"const fs=require('fs'); try{fs.cpSync('dist', 'frontend/dist', {recursive: true});}catch(e){console.error(e)}\"",
     "preview": "vite preview",
     "lint": "oxlint"
   },
