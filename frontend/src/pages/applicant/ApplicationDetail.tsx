@@ -38,11 +38,6 @@ import jsPDF from 'jspdf';
 
 export const ApplicationDetailPage: React.FC = () => {
   const { user } = useAuth();
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
   const { appId } = useParams<{ appId: string }>();
   const navigate = useNavigate();
 
@@ -104,6 +99,10 @@ export const ApplicationDetailPage: React.FC = () => {
   useEffect(() => {
     fetchApplication();
   }, [appId]);
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
   if (loading || !app) {
     return (

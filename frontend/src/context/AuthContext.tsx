@@ -33,8 +33,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshNotifications = async () => {
     if (!user) return;
-    const notifs = await mockApi.getNotifications(user.role === 'applicant' ? user.id : 'ALL');
-    setNotifications(notifs);
+    try {
+      const notifs = await mockApi.getNotifications(user.role === 'applicant' ? user.id : 'ALL');
+      setNotifications(notifs || []);
+    } catch (e) {
+      console.warn('Failed to load notifications:', e);
+      setNotifications([]);
+    }
   };
 
   const login = async (email: string, selectedRole?: Role) => {
@@ -42,8 +47,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(res.user);
     setRole(res.user.role);
     setToken(res.token);
-    const notifs = await mockApi.getNotifications(res.user.id);
-    setNotifications(notifs);
+    try {
+      const notifs = await mockApi.getNotifications(res.user.id);
+      setNotifications(notifs || []);
+    } catch (e) {
+      console.warn('Failed to load notifications on login:', e);
+      setNotifications([]);
+    }
     return res.user;
   };
 

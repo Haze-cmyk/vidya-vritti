@@ -331,11 +331,11 @@ export const ApplyFormPage: React.FC = () => {
       });
     } else if (user?.id) {
       mockApi.getApplications({ applicantId: user.id }).then((apps) => {
-        if (apps.length > 0) {
+        if (apps && apps.length > 0) {
           toast.error("You have already applied for a scheme.");
           navigate('/app/schemes');
         }
-      });
+      }).catch(() => {});
     }
   }, [schemeId, user, navigate, editAppId]);
 

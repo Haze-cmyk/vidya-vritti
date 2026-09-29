@@ -10,7 +10,9 @@ export const AuditLogPage: React.FC = () => {
 
   useEffect(() => {
     mockApi.getAuditLog().then((data) => {
-      setLogs(data);
+      setLogs(data || []);
+      setLoading(false);
+    }).catch(() => {
       setLoading(false);
     });
   }, []);

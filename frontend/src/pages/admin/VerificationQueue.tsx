@@ -11,10 +11,12 @@ export const VerificationQueuePage: React.FC = () => {
 
   useEffect(() => {
     mockApi.getApplications().then((apps) => {
-      const pending = apps.filter(
+      const pending = (apps || []).filter(
         (a) => a.status === 'submitted' || a.status === 'under_verification' || a.status === 'query_raised'
       );
       setQueue(pending);
+      setLoading(false);
+    }).catch(() => {
       setLoading(false);
     });
   }, []);

@@ -11,7 +11,9 @@ export const ScrutinyWorkflowPage: React.FC = () => {
 
   useEffect(() => {
     mockApi.getApplications().then((data) => {
-      setApps(data.filter((a) => a.status === 'verified' || a.status === 'scrutinized'));
+      setApps((data || []).filter((a) => a.status === 'verified' || a.status === 'scrutinized'));
+      setLoading(false);
+    }).catch(() => {
       setLoading(false);
     });
   }, []);

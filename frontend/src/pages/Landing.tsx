@@ -20,7 +20,9 @@ export const LandingPage: React.FC = () => {
 
   useEffect(() => {
     mockApi.getSchemes().then((data) => {
-      setSchemes(data);
+      setSchemes(data || []);
+    }).catch((err) => {
+      console.warn('Could not load schemes on landing:', err);
     });
   }, []);
   return (
