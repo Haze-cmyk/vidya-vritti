@@ -4,13 +4,17 @@
   "version": "1.0.0",
   "type": "module",
   "description": "Vidya-Vrtti: Unified Scholarship & Admin Portal for Ministry of Tribal Affairs (MoTA)",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "scripts": {
     "install:all": "npm install && npm --prefix backend install && npm --prefix frontend install",
     "dev": "concurrently -k -p \"[{name}]\" -n \"BACKEND,FRONTEND\" -c \"yellow.bold,cyan.bold\" \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
     "dev:backend": "npm --prefix backend run dev",
     "dev:frontend": "npm --prefix frontend run dev",
     "seed": "npm --prefix backend run seed",
-    "build": "npm --prefix frontend run build && node -e \"const fs=require('fs'); try{fs.cpSync('frontend/dist', 'dist', {recursive: true});}catch(e){console.error(e)}\""
+    "build": "npm --prefix frontend install && npm --prefix frontend run build && node -e \"const fs=require('fs'); try{fs.cpSync('frontend/dist', 'dist', {recursive: true});}catch(e){console.error(e)}\""
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
