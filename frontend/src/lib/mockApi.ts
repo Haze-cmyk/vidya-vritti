@@ -7,13 +7,13 @@ import {
   Notification,
   MeritCandidate,
   OCRField,
-  Document
+  Document,
+  Role
 } from '../types';
 
 function resolveBaseUrl(): string {
   let url = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '/api').trim().replace(/\/+$/, '');
   if (!url) return '/api';
-  // If protocol was omitted by the user (e.g. vidya-vrityu-production.up.railway.app), auto-prepend https://
   if (!url.startsWith('/') && !url.startsWith('http://') && !url.startsWith('https://')) {
     url = `https://${url}`;
   }
@@ -43,9 +43,10 @@ const MOCK_SCHEMES_KEY = 'vidya_vrtti_mock_schemes';
 const MOCK_APPLICATIONS_KEY = 'vidya_vrtti_mock_applications';
 const MOCK_NOTIFICATIONS_KEY = 'vidya_vrtti_mock_notifications';
 const MOCK_AUDIT_KEY = 'vidya_vrtti_mock_audit';
+export const DEMO_ACCOUNTS_STORAGE_KEY = 'vidya_vrtti_demo_accounts';
 
-// Initial Demo Accounts (5 Official Roles)
-const DEMO_ACCOUNTS: Record<string, User> = {
+// The 4 Core Official Roles: Student, Admin (MoTA Admin), Institute, and Nodal Officer
+export const INITIAL_DEMO_ACCOUNTS: Record<string, User> = {
   'student@demo.in': {
     id: 'usr-student-1',
     loginId: 'VV-2026-10001',
@@ -81,7 +82,7 @@ const DEMO_ACCOUNTS: Record<string, User> = {
     phone: '9876500002',
     role: 'institute',
     designation: 'clerk_principal',
-    officeAddress: '',
+    officeAddress: 'National Institute of Technology, Odisha',
     state: 'Odisha',
     gender: 'Male',
     createdAt: new Date().toISOString()
@@ -98,23 +99,56 @@ const DEMO_ACCOUNTS: Record<string, User> = {
     state: 'Odisha',
     gender: 'Male',
     createdAt: new Date().toISOString()
-  },
-  'committee@demo.in': {
-    id: 'usr-committee-1',
-    loginId: 'VV-2026-10004',
-    name: 'Dr. Meera Sharma',
-    email: 'committee@demo.in',
-    phone: '9876500003',
-    role: 'committee',
-    designation: 'nodal_officer',
-    officeAddress: 'MoTA National Selection Board, New Delhi',
-    state: 'Delhi',
-    gender: 'Female',
-    createdAt: new Date().toISOString()
   }
 };
 
-// Initial Schemes
+/**
+ * Returns current demo accounts merged with any user updates stored in localStorage.
+ * Ensures that if a user changes their name/profile, the updated name persists across logouts.
+ */
+export function getDemoAccounts(): Record<string, User> {
+  try {
+    const raw = localStorage.getItem(DEMO_ACCOUNTS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          ...INITIAL_DEMO_ACCOUNTS,
+          ...parsed
+        };
+      }
+    }
+  } catch {}
+  return { ...INITIAL_DEMO_ACCOUNTS };
+}
+
+/**
+ * Persists an updated account (e.g. changed student/admin name) into the persistent demo accounts store
+ */
+export function saveDemoAccount(updatedUser: Partial<User> & { id?: string; email?: string; role?: Role }): void {
+  try {
+    const accounts = getDemoAccounts();
+    const email = (updatedUser.email || '').toLowerCase().trim();
+    const role = updatedUser.role;
+
+    // Update matching by email
+    if (email && accounts[email]) {
+      accounts[email] = { ...accounts[email], ...updatedUser };
+    }
+
+    // Update matching by role or ID
+    for (const key of Object.keys(accounts)) {
+      if ((role && accounts[key].role === role) || (updatedUser.id && accounts[key].id === updatedUser.id)) {
+        accounts[key] = { ...accounts[key], ...updatedUser };
+      }
+    }
+
+    localStorage.setItem(DEMO_ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
+    window.dispatchEvent(new Event('vidya_account_updated'));
+  } catch {}
+}
+
+// Initial Official ST Schemes
 const DEFAULT_SCHEMES: Scheme[] = [
   {
     id: 'scheme-nfst',
@@ -218,309 +252,33 @@ const DEFAULT_SCHEMES: Scheme[] = [
   }
 ];
 
-// Initial Demo Applications
-const DEFAULT_APPLICATIONS: Application[] = [
-  {
-    id: 'VV-2026-APP-8901',
-    applicantId: 'usr-student-1',
-    applicantName: 'Priya Naik',
-    schemeId: 'scheme-nfst',
-    schemeCode: 'NFST',
-    schemeName: 'National Fellowship for Higher Education of ST Students',
-    status: 'under_verification',
-    currentStage: 2,
-    submittedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
-    lastUpdatedAt: new Date(Date.now() - 1 * 86400000).toISOString(),
-    personal: {
-      fullName: 'Priya Naik',
-      dob: '2001-05-14',
-      gender: 'Female',
-      category: 'ST',
-      tribeName: 'Gond',
-      fatherName: 'Late Birendra Naik',
-      motherName: 'Sunita Naik',
-      aadhaarMasked: 'XXXX-XXXX-4921',
-      phone: '9876543210',
-      email: 'student@demo.in',
-      physicallyHandicapped: 'No',
-      annualIncome: 180000
-    },
-    address: {
-      permanentAddress: 'Village Mahulpali, Post Sargipali, Block Lephripara',
-      state: 'Odisha',
-      district: 'Sundargarh',
-      pincode: '770012',
-      domicileCertNo: 'DOM/OD/2023/8821',
-      domicileState: 'Odisha'
-    },
-    academic: {
-      highestQualification: 'Post Graduate (M.Sc Biotechnology)',
-      institutionName: 'Sambalpur University, Burla',
-      courseName: 'M.Phil / Ph.D in Biotechnology',
-      passingYear: '2025',
-      percentageOrCgpa: 84.5,
-      rollNumber: 'PG-BIOTECH-2023-042'
-    },
-    schemeSpecific: {
-      proposedResearchArea: 'Genetic Diversity and Medicinal Flora in Tribal Belts of Eastern Ghats',
-      universityRegNo: 'SU-PHD-2026-118'
-    },
-    bank: {
-      accountHolderName: 'Priya Naik',
-      accountNumber: '394857201948',
-      ifscCode: 'SBIN0001245',
-      bankName: 'State Bank of India',
-      branchName: 'Sundargarh Main Branch'
-    },
-    documents: [
-      {
-        id: 'doc-st-caste',
-        type: 'caste_cert',
-        fileName: 'ST_Caste_Certificate_Priya_Naik.pdf',
-        fileSize: '1.2 MB',
-        uploadedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
-        status: 'verified',
-        url: '/docs/sample_caste.pdf',
-        ocrConfidence: 98
-      },
-      {
-        id: 'doc-income',
-        type: 'income_cert',
-        fileName: 'Income_Certificate_2025_26.pdf',
-        fileSize: '890 KB',
-        uploadedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
-        status: 'verified',
-        url: '/docs/sample_income.pdf',
-        ocrConfidence: 96
-      }
-    ],
-    score: 88,
-    remarks: 'Profile matches all criteria. Ready for officer verification.'
-  },
-  {
-    id: 'VV-2026-APP-8902',
-    applicantId: 'usr-student-2',
-    applicantName: 'Amit Soreng',
-    schemeId: 'scheme-nfst',
-    schemeCode: 'NFST',
-    schemeName: 'National Fellowship for Higher Education of ST Students',
-    status: 'verified',
-    currentStage: 3,
-    submittedAt: new Date(Date.now() - 7 * 86400000).toISOString(),
-    lastUpdatedAt: new Date(Date.now() - 2 * 86400000).toISOString(),
-    personal: {
-      fullName: 'Amit Soreng',
-      dob: '2000-08-22',
-      gender: 'Male',
-      category: 'ST',
-      tribeName: 'Oraon',
-      fatherName: 'Mangal Soreng',
-      motherName: 'Parvati Soreng',
-      aadhaarMasked: 'XXXX-XXXX-6612',
-      phone: '9876541122',
-      email: 'amit.soreng@demo.in',
-      physicallyHandicapped: 'No',
-      annualIncome: 240000
-    },
-    address: {
-      permanentAddress: 'Plot 42, Birsa Nagar, Ranchi',
-      state: 'Jharkhand',
-      district: 'Ranchi',
-      pincode: '834001',
-      domicileCertNo: 'DOM/JH/2024/1102',
-      domicileState: 'Jharkhand'
-    },
-    academic: {
-      highestQualification: 'Post Graduate (M.A. Anthropology)',
-      institutionName: 'Ranchi University',
-      courseName: 'Ph.D in Tribal Folklore and Customary Laws',
-      passingYear: '2024',
-      percentageOrCgpa: 78.2,
-      rollNumber: 'RU-ANTHRO-2022-019'
-    },
-    schemeSpecific: {
-      proposedResearchArea: 'Preservation of Endangered Tribal Dialects in Chota Nagpur Plateau'
-    },
-    bank: {
-      accountHolderName: 'Amit Soreng',
-      accountNumber: '448833992211',
-      ifscCode: 'PUNB0123400',
-      bankName: 'Punjab National Bank',
-      branchName: 'Ranchi Kutchery Road'
-    },
-    documents: [],
-    score: 82,
-    verifiedBy: 'Shri Rajesh Kumar',
-    verifiedAt: new Date(Date.now() - 2 * 86400000).toISOString()
-  },
-  {
-    id: 'VV-2026-APP-8903',
-    applicantId: 'usr-student-3',
-    applicantName: 'Sunita Marandi',
-    schemeId: 'scheme-nfst',
-    schemeCode: 'NFST',
-    schemeName: 'National Fellowship for Higher Education of ST Students',
-    status: 'query_raised',
-    currentStage: 2,
-    submittedAt: new Date(Date.now() - 5 * 86400000).toISOString(),
-    lastUpdatedAt: new Date(Date.now() - 1 * 86400000).toISOString(),
-    personal: {
-      fullName: 'Sunita Marandi',
-      dob: '2002-01-19',
-      gender: 'Female',
-      category: 'ST',
-      tribeName: 'Santhal',
-      fatherName: 'Somra Marandi',
-      motherName: 'Malati Marandi',
-      aadhaarMasked: 'XXXX-XXXX-7788',
-      phone: '9876543344',
-      email: 'sunita.marandi@demo.in',
-      physicallyHandicapped: 'No',
-      annualIncome: 150000
-    },
-    address: {
-      permanentAddress: 'Ward 5, Baripada',
-      state: 'Odisha',
-      district: 'Mayurbhanj',
-      pincode: '757001',
-      domicileCertNo: 'DOM/OD/2024/9912',
-      domicileState: 'Odisha'
-    },
-    academic: {
-      highestQualification: 'Post Graduate (M.Sc Physics)',
-      institutionName: 'North Orissa University',
-      courseName: 'Ph.D Physics',
-      passingYear: '2025',
-      percentageOrCgpa: 86.0,
-      rollNumber: 'NOU-PHY-2023-011'
-    },
-    schemeSpecific: {},
-    bank: {
-      accountHolderName: 'Sunita Marandi',
-      accountNumber: '998877665544',
-      ifscCode: 'SBIN0000055',
-      bankName: 'State Bank of India',
-      branchName: 'Baripada Town'
-    },
-    documents: [],
-    deficiency: {
-      raisedAt: new Date(Date.now() - 1 * 86400000).toISOString(),
-      raisedBy: 'Shri Rajesh Kumar (Verification Officer)',
-      reasons: ['Income Certificate older than 6 months', 'Document stamp unclear'],
-      note: 'Please upload a freshly issued Income Certificate from Tahasildar for FY 2026-27.',
-      round: 1
-    }
-  },
-  {
-    id: 'VV-2026-APP-8904',
-    applicantId: 'usr-student-4',
-    applicantName: 'Rajesh Munda',
-    schemeId: 'scheme-nos',
-    schemeCode: 'NOS',
-    schemeName: 'National Overseas Scholarship for ST Candidates',
-    status: 'selected',
-    currentStage: 4,
-    submittedAt: new Date(Date.now() - 20 * 86400000).toISOString(),
-    lastUpdatedAt: new Date(Date.now() - 5 * 86400000).toISOString(),
-    personal: {
-      fullName: 'Rajesh Munda',
-      dob: '1999-11-05',
-      gender: 'Male',
-      category: 'ST',
-      tribeName: 'Munda',
-      fatherName: 'Birsa Munda',
-      motherName: 'Jasoda Munda',
-      aadhaarMasked: 'XXXX-XXXX-1122',
-      phone: '9876549988',
-      email: 'rajesh.munda@demo.in',
-      physicallyHandicapped: 'No',
-      annualIncome: 320000
-    },
-    address: {
-      permanentAddress: 'Khunti Road, Torpa',
-      state: 'Jharkhand',
-      district: 'Khunti',
-      pincode: '835227',
-      domicileCertNo: 'DOM/JH/2023/4412',
-      domicileState: 'Jharkhand'
-    },
-    academic: {
-      highestQualification: 'B.Tech Computer Science (88%)',
-      institutionName: 'NIT Jamshedpur',
-      courseName: 'M.Sc Data Science & Artificial Intelligence',
-      passingYear: '2023',
-      percentageOrCgpa: 88.0,
-      rollNumber: 'NITJ-CSE-2019-094'
-    },
-    schemeSpecific: {
-      universityName: 'University of Edinburgh, UK',
-      qsWorldRanking: 22
-    },
-    bank: {
-      accountHolderName: 'Rajesh Munda',
-      accountNumber: '112233445566',
-      ifscCode: 'HDFC0001824',
-      bankName: 'HDFC Bank',
-      branchName: 'Ranchi Main'
-    },
-    documents: [],
-    score: 95
-  }
-];
+// ZERO FAKE APPLICANTS: All applications are strictly generated by actual user submissions
+const DEFAULT_APPLICATIONS: Application[] = [];
 
-// Initial Demo Notifications
+// Clean initial notifications
 const DEFAULT_NOTIFICATIONS: Notification[] = [
   {
     id: 'notif-1',
     userId: 'usr-student-1',
     title: 'Welcome to Vidya-Vrtti Unified Portal',
-    message: 'Your account is verified. You can browse ST schemes, fill your application, and track progress.',
+    message: 'Your account is ready. Browse ST schemes and submit your fellowship application.',
     type: 'success',
     read: false,
-    createdAt: new Date(Date.now() - 2 * 3600000).toISOString()
-  },
-  {
-    id: 'notif-2',
-    userId: 'usr-student-1',
-    title: 'NFST Application Under Scrutiny',
-    message: 'Your NFST application (VV-2026-APP-8901) is currently being verified by the Odisha Nodal Officer.',
-    type: 'info',
-    read: true,
-    link: '/app/applications/VV-2026-APP-8901',
-    createdAt: new Date(Date.now() - 86400000).toISOString()
-  },
-  {
-    id: 'notif-3',
-    userId: 'ALL',
-    title: 'SIH 2026 Live Portal Demo',
-    message: 'Vidya-Vrtti AI-Unified DBT System is operating in high availability mode.',
-    type: 'info',
-    read: true,
     createdAt: new Date().toISOString()
   }
 ];
 
-// Initial Audit Logs
+// Clean initial audit log
 const DEFAULT_AUDIT: AuditLogEntry[] = [
   {
-    id: 'audit-1',
-    actorId: 'usr-officer-1',
-    actorName: 'Shri Rajesh Kumar',
-    actorRole: 'officer',
-    action: 'Verified Document: ST Caste Certificate for Application VV-2026-APP-8901',
-    entityType: 'application',
-    entityId: 'VV-2026-APP-8901',
-    timestamp: new Date(Date.now() - 3600000).toISOString()
-  },
-  {
-    id: 'audit-2',
+    id: 'audit-init-1',
     actorId: 'usr-admin-1',
     actorName: 'Smt. Kavita Rao',
     actorRole: 'admin',
-    action: 'Published Scheme Guidelines: NFST 2026-27',
+    action: 'Initialized Vidya-Vrtti MoTA Portal Engine',
     entityType: 'scheme',
     entityId: 'scheme-nfst',
-    timestamp: new Date(Date.now() - 86400000).toISOString()
+    timestamp: new Date().toISOString()
   }
 ];
 
@@ -543,16 +301,29 @@ function saveStoredSchemes(schemes: Scheme[]): void {
   } catch {}
 }
 
+/**
+ * Returns saved applications and aggressively purges any legacy fake/dummy applicants
+ * (e.g. Priya Naik old mock, Amit Soreng, Sunita Marandi, Rajesh Munda).
+ */
 function getStoredApplications(): Application[] {
   try {
     const raw = localStorage.getItem(MOCK_APPLICATIONS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) {
+        const fakeIds = ['VV-2026-APP-8901', 'VV-2026-APP-8902', 'VV-2026-APP-8903', 'VV-2026-APP-8904'];
+        const fakeNames = ['Amit Soreng', 'Sunita Marandi', 'Rajesh Munda'];
+        const cleaned = parsed.filter(
+          (a) => !fakeIds.includes(a.id) && !fakeNames.includes(a.applicantName)
+        );
+        if (cleaned.length !== parsed.length) {
+          saveStoredApplications(cleaned);
+        }
+        return cleaned;
+      }
     }
   } catch {}
-  localStorage.setItem(MOCK_APPLICATIONS_KEY, JSON.stringify(DEFAULT_APPLICATIONS));
-  return DEFAULT_APPLICATIONS;
+  return [];
 }
 
 function saveStoredApplications(apps: Application[]): void {
@@ -566,7 +337,7 @@ function getStoredNotifications(): Notification[] {
     const raw = localStorage.getItem(MOCK_NOTIFICATIONS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
   } catch {}
   localStorage.setItem(MOCK_NOTIFICATIONS_KEY, JSON.stringify(DEFAULT_NOTIFICATIONS));
@@ -584,7 +355,7 @@ function getStoredAudit(): AuditLogEntry[] {
     const raw = localStorage.getItem(MOCK_AUDIT_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
   } catch {}
   localStorage.setItem(MOCK_AUDIT_KEY, JSON.stringify(DEFAULT_AUDIT));
@@ -597,14 +368,13 @@ function saveStoredAudit(logs: AuditLogEntry[]): void {
   } catch {}
 }
 
-// Helper for typed fetch calls with non-JSON guard to prevent JSON.parse syntax errors on HTML responses
+// Helper for typed fetch calls with non-JSON guard
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const token = localStorage.getItem(TOKEN_STORAGE_KEY);
   const headers: Record<string, string> = {
     ...(options?.headers as Record<string, string>)
   };
 
-  // Only add Content-Type: application/json if body is not FormData
   if (!(options?.body instanceof FormData) && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
   }
@@ -620,7 +390,6 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) {
-    // If the server returns HTML (e.g. Netlify SPA rewrite to index.html or 404/502 page), do not attempt response.json()
     throw new Error(
       `Endpoint ${endpoint} returned non-JSON response (${response.status} ${response.statusText || 'OK'}). Server may be offline.`
     );
@@ -641,6 +410,88 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 }
 
 export const mockApi = {
+  getDemoAccounts,
+  saveDemoAccount,
+
+  /**
+   * Generates dynamic Quick Login accounts for the 4 core roles, using the latest
+   * saved names from localStorage (so changing name updates the button immediately).
+   */
+  getQuickLoginAccounts(): Array<{
+    role: Role;
+    label: string;
+    name: string;
+    email: string;
+    badge: string;
+    badgeColor: string;
+    borderHover: string;
+    bgHover: string;
+    iconName: 'GraduationCap' | 'ShieldCheck' | 'Building2' | 'UserCheck';
+    iconColor: string;
+    description: string;
+  }> {
+    const accs = getDemoAccounts();
+    const student = accs['student@demo.in'] || INITIAL_DEMO_ACCOUNTS['student@demo.in'];
+    const admin = accs['admin@demo.in'] || INITIAL_DEMO_ACCOUNTS['admin@demo.in'];
+    const institute = accs['institute@demo.in'] || INITIAL_DEMO_ACCOUNTS['institute@demo.in'];
+    const officer = accs['officer@demo.in'] || INITIAL_DEMO_ACCOUNTS['officer@demo.in'];
+
+    return [
+      {
+        role: 'applicant',
+        label: 'Student',
+        name: student.name,
+        email: student.email,
+        badge: 'ST Applicant',
+        badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+        borderHover: 'hover:border-[#71816d] hover:shadow-md',
+        bgHover: 'hover:bg-emerald-50/50',
+        iconName: 'GraduationCap',
+        iconColor: 'text-[#71816d]',
+        description: 'Student Portal & Applications'
+      },
+      {
+        role: 'admin',
+        label: 'MoTA Admin',
+        name: admin.name,
+        email: admin.email,
+        badge: 'Ministry Admin',
+        badgeColor: 'bg-rose-100 text-rose-800 border-rose-300',
+        borderHover: 'hover:border-rose-500 hover:shadow-md',
+        bgHover: 'hover:bg-rose-50/50',
+        iconName: 'ShieldCheck',
+        iconColor: 'text-rose-600',
+        description: 'Executive Control & Schemes'
+      },
+      {
+        role: 'institute',
+        label: 'Institute',
+        name: institute.name,
+        email: institute.email,
+        badge: '',
+        badgeColor: '',
+        borderHover: 'hover:border-purple-500 hover:shadow-md',
+        bgHover: 'hover:bg-purple-50/50',
+        iconName: 'Building2',
+        iconColor: 'text-purple-600',
+        description: 'Institute Nodal Verification'
+      },
+      {
+        role: 'officer',
+        label: 'Nodal Officer',
+        name: officer.name,
+        email: officer.email,
+        badge: 'Welfare Dept',
+        badgeColor: 'bg-teal-100 text-teal-800 border-teal-300',
+        borderHover: 'hover:border-teal-500 hover:shadow-md',
+        bgHover: 'hover:bg-teal-50/50',
+        iconName: 'UserCheck',
+        iconColor: 'text-teal-600',
+        description: 'Document OCR Scrutiny Queue'
+      }
+    ];
+  },
+
   async login(emailOrUsername: string, role?: string): Promise<{ user: User; token: string }> {
     try {
       const res = await request<{ user: User; token: string }>('/auth/login', {
@@ -648,16 +499,19 @@ export const mockApi = {
         body: JSON.stringify({ email: emailOrUsername, username: emailOrUsername, role })
       });
 
+      // Synchronize current user and demo accounts store
       localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(res.user));
       localStorage.setItem(TOKEN_STORAGE_KEY, res.token);
+      saveDemoAccount(res.user);
       return res;
     } catch (err: any) {
-      console.info('Backend auth unreachable, falling back to client demonstration accounts:', err.message);
+      console.info('Backend auth unreachable, checking persistent demo accounts:', err.message);
 
       const query = (emailOrUsername || '').toLowerCase().trim();
+      const accounts = getDemoAccounts();
 
-      // Find in predefined demo accounts
-      const matched = Object.values(DEMO_ACCOUNTS).find(
+      // Find in persistent demo accounts
+      const matched = Object.values(accounts).find(
         (u) =>
           u.email.toLowerCase() === query ||
           (u.loginId && u.loginId.toLowerCase() === query) ||
@@ -671,7 +525,7 @@ export const mockApi = {
         return { user: matched, token };
       }
 
-      // If user registered locally
+      // If user registered or updated locally
       const storedUser = this.getCurrentUser();
       if (
         storedUser &&
@@ -683,9 +537,9 @@ export const mockApi = {
         return { user: storedUser, token };
       }
 
-      // Default demo fallback: if any role is passed, pick that role's account
-      if (role && DEMO_ACCOUNTS[`${role}@demo.in`]) {
-        const acc = DEMO_ACCOUNTS[`${role}@demo.in`];
+      // Default demo role fallback
+      if (role && accounts[`${role}@demo.in`]) {
+        const acc = accounts[`${role}@demo.in`];
         const token = `jwt-${acc.id}-${Date.now()}`;
         localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(acc));
         localStorage.setItem(TOKEN_STORAGE_KEY, token);
@@ -705,6 +559,7 @@ export const mockApi = {
 
       localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(user));
       localStorage.setItem(TOKEN_STORAGE_KEY, `jwt-token-${user.id}`);
+      saveDemoAccount(user);
       return user;
     } catch (err: any) {
       console.info('Backend registration unreachable, registering locally:', err.message);
@@ -728,6 +583,7 @@ export const mockApi = {
 
       localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(newUser));
       localStorage.setItem(TOKEN_STORAGE_KEY, `jwt-token-${newUser.id}`);
+      saveDemoAccount(newUser);
       return newUser;
     }
   },
@@ -739,12 +595,14 @@ export const mockApi = {
         body: JSON.stringify(userData)
       });
       localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(updated));
+      saveDemoAccount(updated);
       return updated;
     } catch (err: any) {
       console.info('Backend profile update unreachable, updating locally:', err.message);
-      const current = this.getCurrentUser() || (DEMO_ACCOUNTS['student@demo.in'] as User);
+      const current = this.getCurrentUser() || (getDemoAccounts()['student@demo.in'] as User);
       const merged: User = { ...current, ...userData };
       localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(merged));
+      saveDemoAccount(merged);
       return merged;
     }
   },
@@ -760,6 +618,7 @@ export const mockApi = {
 
   setCurrentUser(user: User): void {
     localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(user));
+    saveDemoAccount(user);
   },
 
   // Schemes API
@@ -767,7 +626,6 @@ export const mockApi = {
     try {
       return await request<Scheme[]>('/schemes');
     } catch (err: any) {
-      console.info('Using local schemes:', err.message);
       return getStoredSchemes();
     }
   },
@@ -792,7 +650,6 @@ export const mockApi = {
         body: JSON.stringify(schemeData)
       });
     } catch (err: any) {
-      console.info('Adding scheme to local storage:', err.message);
       const schemes = getStoredSchemes();
       const newScheme: Scheme = {
         id: schemeData.id || `scheme-${Date.now()}`,
@@ -834,7 +691,7 @@ export const mockApi = {
     }
   },
 
-  // Applications API
+  // Applications API (Only User-Created Applications)
   async getApplications(filters?: {
     schemeCode?: string;
     status?: string;
@@ -853,7 +710,6 @@ export const mockApi = {
       const query = params.toString() ? `?${params.toString()}` : '';
       return await request<Application[]>(`/applications${query}`);
     } catch (err: any) {
-      console.info('Using local applications:', err.message);
       let apps = getStoredApplications();
 
       if (filters?.applicantId) {
@@ -900,13 +756,12 @@ export const mockApi = {
         body: JSON.stringify(appData)
       });
     } catch (err: any) {
-      console.info('Saving application to local storage:', err.message);
       const apps = getStoredApplications();
       const user = this.getCurrentUser();
       const newApp: Application = {
         id: `VV-2026-APP-${Math.floor(1000 + Math.random() * 9000)}`,
         applicantId: user?.id || appData.applicantId || 'usr-student-1',
-        applicantName: user?.name || appData.applicantName || 'Priya Naik',
+        applicantName: user?.name || appData.applicantName || 'Student Applicant',
         schemeId: appData.schemeId || 'scheme-nfst',
         schemeCode: appData.schemeCode || 'NFST',
         schemeName: appData.schemeName || 'National Fellowship for ST Students',
@@ -915,30 +770,30 @@ export const mockApi = {
         submittedAt: new Date().toISOString(),
         lastUpdatedAt: new Date().toISOString(),
         personal: appData.personal || {
-          fullName: user?.name || 'Priya Naik',
-          dob: '2001-05-14',
-          gender: 'Female',
+          fullName: user?.name || 'Student Applicant',
+          dob: user?.dob || '2001-05-14',
+          gender: (user?.gender as any) || 'Female',
           category: 'ST',
           tribeName: user?.tribe || 'Gond',
-          fatherName: '',
-          motherName: '',
-          aadhaarMasked: 'XXXX-XXXX-4921',
+          fatherName: user?.fatherName || '',
+          motherName: user?.motherName || '',
+          aadhaarMasked: user?.aadhaar || 'XXXX-XXXX-4921',
           phone: user?.phone || '9876543210',
           email: user?.email || 'student@demo.in',
           physicallyHandicapped: 'No',
-          annualIncome: 180000
+          annualIncome: user?.annualIncome || 180000
         },
         address: appData.address || {
-          permanentAddress: 'Sundargarh, Odisha',
+          permanentAddress: user?.permanentAddress || 'Sundargarh, Odisha',
           state: user?.state || 'Odisha',
-          district: 'Sundargarh',
-          pincode: '770012',
+          district: user?.district || 'Sundargarh',
+          pincode: user?.pincode || '770012',
           domicileCertNo: 'DOM/2026/01',
           domicileState: user?.state || 'Odisha'
         },
         academic: appData.academic || {
-          highestQualification: 'Post Graduate',
-          institutionName: 'Sambalpur University',
+          highestQualification: user?.highestQualification || 'Post Graduate',
+          institutionName: 'State University',
           courseName: 'M.Phil / Ph.D',
           passingYear: '2025',
           percentageOrCgpa: 82.5,
@@ -946,7 +801,7 @@ export const mockApi = {
         },
         schemeSpecific: appData.schemeSpecific || {},
         bank: appData.bank || {
-          accountHolderName: user?.name || 'Priya Naik',
+          accountHolderName: user?.name || 'Student Applicant',
           accountNumber: '394857201948',
           ifscCode: 'SBIN0001245',
           bankName: 'State Bank of India',
@@ -1096,7 +951,6 @@ export const mockApi = {
     try {
       return await request<MeritCandidate[]>(`/applications/merit-list?schemeCode=${encodeURIComponent(schemeCode)}`);
     } catch (err: any) {
-      console.info('Computing merit list locally:', err.message);
       const apps = getStoredApplications();
       const eligible = apps.filter(
         (a) =>
@@ -1128,7 +982,11 @@ export const mockApi = {
     }
   },
 
-  // Real Document Upload & AI OCR fallback
+  /**
+   * Real Document Upload & AI OCR:
+   * Converts the uploaded file into an inline Data URL so document preview renders the real PDF
+   * and never triggers website reflection or recursive 404/SPA loops.
+   */
   async uploadDocument(
     file: File,
     docType: string,
@@ -1162,11 +1020,25 @@ export const mockApi = {
         body: formData
       });
     } catch (err: any) {
-      console.info('Using client simulated OCR fallback:', err.message);
+      console.info('Using client simulated OCR fallback with Data URL:', err.message);
       const docId = `doc-${Date.now()}`;
       const user = this.getCurrentUser();
-      const extractedName = compareValues?.fullName || user?.name || 'Priya Naik';
+      const extractedName = compareValues?.fullName || user?.name || 'ST Applicant';
       const extractedTribe = compareValues?.tribeName || user?.tribe || 'Gond';
+
+      let fileDataUrl = '';
+      try {
+        fileDataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(file);
+        });
+      } catch {}
+
+      if (!fileDataUrl) {
+        fileDataUrl = URL.createObjectURL(file);
+      }
 
       const ocrFields: OCRField[] = [
         {
@@ -1188,7 +1060,7 @@ export const mockApi = {
         {
           id: `ocr-${Date.now()}-3`,
           field: 'Certificate Number',
-          value: 'OR/ST/2025/98412',
+          value: `OR/ST/2026/${Math.floor(10000 + Math.random() * 90000)}`,
           confidence: 95,
           sourceDocId: docId,
           sourceDocName: file.name
@@ -1211,7 +1083,7 @@ export const mockApi = {
           fileSize: `${(file.size / 1024).toFixed(1)} KB`,
           uploadedAt: new Date().toISOString(),
           status: 'verified',
-          url: URL.createObjectURL(file),
+          url: fileDataUrl,
           ocrConfidence: 96,
           ocrFields
         },
@@ -1268,9 +1140,23 @@ export const mockApi = {
         body: formData
       });
     } catch (err: any) {
-      console.info('Document verify client fallback active:', err.message);
       const docId = `doc-${Date.now()}`;
-      const name = compareName || 'Priya Naik';
+      const user = this.getCurrentUser();
+      const name = compareName || user?.name || 'ST Applicant';
+
+      let fileDataUrl = '';
+      try {
+        fileDataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(file);
+        });
+      } catch {}
+
+      if (!fileDataUrl) {
+        fileDataUrl = URL.createObjectURL(file);
+      }
 
       return {
         success: true,
@@ -1283,14 +1169,14 @@ export const mockApi = {
           fileSize: `${(file.size / 1024).toFixed(1)} KB`,
           uploadedAt: new Date().toISOString(),
           status: 'verified',
-          url: URL.createObjectURL(file),
+          url: fileDataUrl,
           ocrConfidence: 97
         },
         extractedFields: {
           fullName: name,
-          dateOfBirth: '2001-05-14',
+          dateOfBirth: user?.dob || '2001-05-14',
           casteCategory: 'Scheduled Tribe (ST)',
-          certificateNumber: 'OR/ST/2025/98412',
+          certificateNumber: `OR/ST/2026/${Math.floor(10000 + Math.random() * 90000)}`,
           issuingAuthority: 'Tahasildar, Odisha'
         },
         confidenceScores: {
@@ -1333,12 +1219,11 @@ export const mockApi = {
     ];
   },
 
-  // Admin Stats
+  // Admin Stats (Computed directly from real user applications)
   async getAdminStats(): Promise<AdminStats> {
     try {
       return await request<AdminStats>('/stats');
     } catch (err: any) {
-      console.info('Computing admin stats from local applications:', err.message);
       const allApps = getStoredApplications();
 
       const totalApplications = allApps.length;
@@ -1352,7 +1237,6 @@ export const mockApi = {
       const deficient = allApps.filter((a) => a.status === 'query_raised').length;
       const disbursed = allApps.filter((a) => a.status === 'disbursed').length;
 
-      // Group by date
       const dateMap: Record<string, number> = {};
       allApps.forEach((a) => {
         const d = a.submittedAt ? a.submittedAt.split('T')[0] : '2026-09-01';
@@ -1360,7 +1244,6 @@ export const mockApi = {
       });
       const applicationsByDate = Object.entries(dateMap).map(([date, count]) => ({ date, count }));
 
-      // Scheme split
       const schemeMap: Record<string, number> = {};
       allApps.forEach((a) => {
         const c = a.schemeCode || 'NFST';
@@ -1378,7 +1261,6 @@ export const mockApi = {
         color: schemeColors[name] || '#71816d'
       }));
 
-      // State split
       const stateMap: Record<string, number> = {};
       allApps.forEach((a) => {
         const s = a.address?.state || 'Odisha';
@@ -1422,10 +1304,7 @@ export const mockApi = {
             percentage: totalApplications ? Math.round((disbursed / totalApplications) * 100) : 0
           }
         ],
-        deficiencyBreakdown: [
-          { reason: 'Income Certificate Expired', count: 2 },
-          { reason: 'Caste Certificate Unverified', count: 1 }
-        ],
+        deficiencyBreakdown: [],
         anomalies: []
       };
     }
@@ -1436,7 +1315,6 @@ export const mockApi = {
     try {
       return await request<Notification[]>(`/notifications?userId=${encodeURIComponent(userId)}`);
     } catch (err: any) {
-      console.info('Using local notifications:', err.message);
       const all = getStoredNotifications();
       if (!userId || userId === 'ALL') return all;
       return all.filter((n) => n.userId === userId || n.userId === 'ALL');
@@ -1490,7 +1368,6 @@ export const mockApi = {
     try {
       return await request<AuditLogEntry[]>('/audit');
     } catch (err: any) {
-      console.info('Using local audit logs:', err.message);
       return getStoredAudit();
     }
   },

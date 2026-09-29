@@ -82,21 +82,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const switchRole = (newRole: Role) => {
     setRole(newRole);
     if (user) {
+      const demoAccounts = mockApi.getDemoAccounts();
       const updatedUser = { ...user, role: newRole };
       if (newRole === 'officer') {
-        updatedUser.name = 'Shri Rajesh Kumar (Verification Officer)';
+        const off = demoAccounts['officer@demo.in'];
+        updatedUser.name = off?.name || 'Shri Rajesh Kumar';
         updatedUser.email = 'officer@demo.in';
-      } else if (newRole === 'committee') {
-        updatedUser.name = 'Dr. Meera Sharma (Selection Committee)';
-        updatedUser.email = 'committee@demo.in';
       } else if (newRole === 'admin') {
-        updatedUser.name = 'Smt. Kavita Rao (MoTA Administrator)';
+        const adm = demoAccounts['admin@demo.in'];
+        updatedUser.name = adm?.name || 'Smt. Kavita Rao';
         updatedUser.email = 'admin@demo.in';
       } else if (newRole === 'institute') {
-        updatedUser.name = 'Dr. Ramesh Kumar (Institute Nodal Officer)';
+        const inst = demoAccounts['institute@demo.in'];
+        updatedUser.name = inst?.name || 'Dr. Ramesh Kumar';
         updatedUser.email = 'institute@demo.in';
       } else {
-        updatedUser.name = 'Priya Naik (ST Applicant)';
+        const stu = demoAccounts['student@demo.in'];
+        updatedUser.name = stu?.name || 'Student Applicant';
         updatedUser.email = 'student@demo.in';
       }
       setUser(updatedUser);

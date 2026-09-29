@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { mockApi } from '../../lib/mockApi';
 import { Role } from '../../types';
 import {
   Lock,
@@ -16,83 +17,35 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface QuickLoginAccount {
-  role: Role;
-  label: string;
-  name: string;
-  email: string;
-  badge: string;
-  badgeColor: string;
-  borderHover: string;
-  bgHover: string;
-  icon: LucideIcon;
-  iconColor: string;
-  description: string;
-}
-
-const QUICK_LOGIN_ACCOUNTS: QuickLoginAccount[] = [
-  {
-    role: 'applicant',
-    label: 'Student',
-    name: 'Priya Naik',
-    email: 'student@demo.in',
-    badge: 'ST Applicant',
-    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-    borderHover: 'hover:border-[#71816d] hover:shadow-md',
-    bgHover: 'hover:bg-emerald-50/50',
-    icon: GraduationCap,
-    iconColor: 'text-[#71816d]',
-    description: 'Student Portal & Applications'
-  },
-  {
-    role: 'admin',
-    label: 'MoTA Admin',
-    name: 'Smt. Kavita Rao',
-    email: 'admin@demo.in',
-    badge: 'Ministry Admin',
-    badgeColor: 'bg-rose-100 text-rose-800 border-rose-300',
-    borderHover: 'hover:border-rose-500 hover:shadow-md',
-    bgHover: 'hover:bg-rose-50/50',
-    icon: ShieldCheck,
-    iconColor: 'text-rose-600',
-    description: 'Executive Control & Schemes'
-  },
-  {
-    role: 'institute',
-    label: 'Institute',
-    name: 'Dr. Ramesh Kumar',
-    email: 'institute@demo.in',
-    badge: '',
-    badgeColor: '',
-    borderHover: 'hover:border-purple-500 hover:shadow-md',
-    bgHover: 'hover:bg-purple-50/50',
-    icon: Building2,
-    iconColor: 'text-purple-600',
-    description: 'Institute Nodal Verification'
-  },
-  {
-    role: 'officer',
-    label: 'Nodal Officer',
-    name: 'Shri Rajesh Kumar',
-    email: 'officer@demo.in',
-    badge: 'Welfare Dept',
-    badgeColor: 'bg-teal-100 text-teal-800 border-teal-300',
-    borderHover: 'hover:border-teal-500 hover:shadow-md',
-    bgHover: 'hover:bg-teal-50/50',
-    icon: UserCheck,
-    iconColor: 'text-teal-600',
-    description: 'Document OCR Scrutiny Queue'
-  }
-];
+const ICON_LOOKUP: Record<string, LucideIcon> = {
+  GraduationCap,
+  ShieldCheck,
+  Building2,
+  UserCheck
+};
 
 export const LoginPage: React.FC = () => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [quickLoggingInRole, setQuickLoggingInRole] = useState<Role | null>(null);
+  const [quickAccounts, setQuickAccounts] = useState(() => mockApi.getQuickLoginAccounts());
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    const handleAccountSync = () => {
+      setQuickAccounts(mockApi.getQuickLoginAccounts());
+    };
+    handleAccountSync();
+    window.addEventListener('vidya_account_updated', handleAccountSync);
+    window.addEventListener('storage', handleAccountSync);
+    return () => {
+      window.removeEventListener('vidya_account_updated', handleAccountSync);
+      window.removeEventListener('storage', handleAccountSync);
+    };
+  }, []);
 
   const handleQuickLogin = async (email: string, targetRole: Role, roleLabel: string) => {
     setLoading(true);
@@ -183,8 +136,8 @@ export const LoginPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {QUICK_LOGIN_ACCOUNTS.map((acc) => {
-              const Icon = acc.icon;
+            {quickAccounts.map((acc) => {
+              const Icon = ICON_LOOKUP[acc.iconName] || User;
               const isCurrentLoading = quickLoggingInRole === acc.role;
               return (
                 <button
